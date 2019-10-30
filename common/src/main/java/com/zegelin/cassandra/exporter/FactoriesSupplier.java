@@ -14,6 +14,9 @@ import com.zegelin.cassandra.exporter.collector.jvm.*;
 import com.zegelin.prometheus.domain.Labels;
 
 import javax.management.*;
+
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -293,6 +296,21 @@ public class FactoriesSupplier implements Supplier<List<Factory>> {
         return tableMetricFactory(collectorConstructor, jmxName, familyNameSuffix, help, false, extraLabels);
     }
 
+    private static final Pattern MONTHLY_TABLE_PATTERN = Pattern.compile(".+_([0-9]{6})$");
+
+    private static boolean isOldMonthlyTable(final String table) {
+        final Matcher matcher = MONTHLY_TABLE_PATTERN.matcher(table);
+        if (!matcher.matches()) {
+            return false;
+        }
+        final String group = matcher.group(1);
+        final int year = Integer.parseInt(group.substring(0, 4));
+        final int month = Integer.parseInt(group.substring(4));
+        final LocalDate parsed = LocalDate.of(year, month, 1);
+        final LocalDate oldest = LocalDate.now().minus(13, ChronoUnit.MONTHS);
+        return oldest.isAfter(parsed);
+    }
+
     private Factory tableMetricFactory(final FactoryBuilder.CollectorConstructor collectorConstructor, final String jmxName, final String familyNameSuffix, final String help, final boolean includeCompactionLabels, final Map<String, String> extraLabels) {
         final QueryExp objectNameQuery = Query.or(
                 format("org.apache.cassandra.metrics:type=Table,keyspace=*,scope=*,name=%s", jmxName),
@@ -314,6 +332,9 @@ public class FactoriesSupplier implements Supplier<List<Factory>> {
                     }
 
                     if (excludedKeyspaces.contains(keyspaceName)) {
+                        return false;
+                    }
+                    if (isOldMonthlyTable(tableName)) {
                         return false;
                     }
 
