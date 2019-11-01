@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>agent</artifactId>
-    <version>0.9.9-SNAPSHOT</version>
+    <version>0.9.9-idata1</version>
 
     <name>Cassandra Exporter Agent</name>
 
